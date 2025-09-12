@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multiusos.IO - Snake y Pong</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family: 'Arial', sans-serif; }
+body, html { width:100%; height:100%; background:#121212; display:flex; justify-content:center; align-items:center; overflow:hidden; }
+
+/* Pantalla de carga */
+#loaderScreen { position: absolute; width: 100%; height: 100%; background: #121212; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 9999; }
+#loadingBarContainer { width: 70%; height: 20px; background: #333; border-radius: 10px; overflow: hidden; margin-top: 20px; }
+#loadingBar { height: 100%; width: 0%; background: linear-gradient(90deg, #00fffb, #ff00ff); border-radius: 10px; transition: width 0.2s; }
+
+/* Bienvenida */
+#welcomeScreen { position: absolute; width: 100%; height: 100%; background:#121212; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; opacity: 0; transform: scale(0.8); transition: opacity 1s, transform 1s; }
+#welcomeScreen.show { opacity: 1; transform: scale(1); }
+#welcomeScreen h1 { font-size: 4em; background: linear-gradient(90deg, #00fffb, #ff00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; animation: glow 2s infinite alternate; }
+#welcomeScreen p { font-size: 1.5em; margin-top: 10px; color: #aaa; }
+@keyframes glow { 0% { text-shadow: 0 0 10px #00fffb, 0 0 20px #ff00ff; } 100% { text-shadow: 0 0 20px #00fffb, 0 0 40px #ff00ff; } }
+
+/* Selección de juegos */
+#gameSelection { position: absolute; width: 100%; height: 100%; background: #1e1e1e; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; opacity: 0; transition: opacity 1s; }
+#gameSelection.show { opacity: 1; }
+#gameSelection h2 { margin-bottom: 30px; font-size: 2.5em; }
+.gameBtn { background: linear-gradient(90deg, #ff00ff, #00fffb); color: white; border: none; padding: 15px 40px; margin: 10px; font-size: 1.2em; cursor: pointer; border-radius: 12px; transition: transform 0.2s, box-shadow 0.2s; }
+.gameBtn:hover { transform: scale(1.1); box-shadow: 0 0 20px #00fffb, 0 0 20px #ff00ff; }
+
+/* Canvas */
+#snakeGame, #pongGame { display: none; position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); background: #000; border: 3px solid #00fffb; border-radius: 12px; }
+
+/* Botones móviles Snake */
+#mobileControls { position: absolute; bottom: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; display: none; }
+.controlRow { display: flex; gap: 10px; }
+.controlBtn { width: 60px; height: 60px; border-radius: 50%; border: none; background: linear-gradient(90deg, #ff00ff, #00fffb); color: white; font-size: 2em; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.controlBtn:active { transform: scale(0.9); box-shadow: 0 0 10px #00fffb, 0 0 10px #ff00ff; }
+
+/* Botones móviles Pong */
+#pongControls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-around; align-items: center; display: none; z-index: 1000; }
+.pongPlayerControls { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.pongBtn { width: 60px; height: 60px; border-radius: 50%; border: none; background: linear-gradient(90deg, #00fffb, #ff00ff); color: white; font-size: 1.5em; cursor: pointer; }
+.pongBtn:active { transform: scale(0.9); box-shadow: 0 0 10px #00fffb, 0 0 10px #ff00ff; }
+
+/* Ventana flotante opciones Snake */
+#snakeModal { display: none; position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); background:#1e1e1e; padding: 20px; border-radius: 12px; color:white; z-index: 1000; box-shadow: 0 0 20px #00fffb; width: 300px; }
+#snakeModal h3 { margin-bottom: 15px; text-align:center; }
+#snakeModal label { display:block; margin: 8px 0 4px; }
+#snakeModal input[type="number"] { width: 60px; }
+#snakeModal button { margin-top: 10px; width: 100%; padding: 10px; border:none; border-radius:8px; background: linear-gradient(90deg,#00fffb,#ff00ff); color:white; font-size:1em; cursor:pointer; }
+#snakeModal button:hover { transform: scale(1.05); }
+
+/* Marcador Pong */
+#pongScore {
+  display: none;
+  position: absolute;
+  top: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  color: white;
+  font-size: 1.5em;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<!-- Pantalla de carga -->
+<div id="loaderScreen">
+    <h1>Cargando...</h1>
+    <div id="loadingBarContainer"><div id="loadingBar"></div></div>
+</div>
+
+<!-- Bienvenida -->
+<div id="welcomeScreen">
+    <h1 id="titleText"></h1>
+    <p>Creado por: Iker</p>
+</div>
+
+<!-- Selección de juegos -->
+<div id="gameSelection">
+    <h2>Selecciona un juego</h2>
+    <button class="gameBtn" id="snakeBtn">Juego 1: Snake</button>
+    <button class="gameBtn" id="pongBtn">Juego 2: Pong</button>
+    <button class="gameBtn">Juego 3</button>
+</div>
+
+<!-- Canvas Snake -->
+<canvas id="snakeGame" width="400" height="400"></canvas>
+
+<!-- Botones móviles Snake -->
+<div id="mobileControls">
+    <div class="controlRow"><button class="controlBtn" id="upBtn">↑</button></div>
+    <div class="controlRow">
+        <button class="controlBtn" id="leftBtn">←</button>
+        <button class="controlBtn" id="downBtn">↓</button>
+        <button class="controlBtn" id="rightBtn">→</button>
+    </div>
+</div>
+
+<!-- Modal opciones Snake -->
+<div id="snakeModal">
+    <h3>Opciones de Snake</h3>
+    <label>Velocidad (ms por paso): <input type="number" id="speedInput" value="100" min="50" max="500"></label>
+    <label>Tamaño de segmentos (px): <input type="number" id="sizeInput" value="20" min="10" max="50"></label>
+    <label>Imagen de serpiente: <input type="file" id="snakeImgInput" accept="image/*"></label>
+    <label>Imagen de comida: <input type="file" id="foodImgInput" accept="image/*"></label>
+    <label><input type="checkbox" id="peaceMode"> Modo Paz (atravesar paredes)</label>
+    <button id="startSnakeBtn">Comenzar Juego</button>
+</div>
+
+<!-- Pong -->
+<canvas id="pongGame" width="500" height="300"></canvas>
+
+<!-- Marcador Pong -->
+<div id="pongScore">
+    <span id="scoreP1">Jugador 1: 0</span>
+    <span id="scoreP2">Jugador 2: 0</span>
+</div>
+
+<!-- Botones móviles Pong -->
+<div id="pongControls">
+    <div class="pongPlayerControls">
+        <p>Jugador 1</p>
+        <button class="pongBtn" id="p1Up">↑</button>
+        <button class="pongBtn" id="p1Down">↓</button>
+    </div>
+    <div class="pongPlayerControls">
+        <p>Jugador 2</p>
+        <button class="pongBtn" id="p2Up">↑</button>
+        <button class="pongBtn" id="p2Down">↓</button>
+    </div>
+</div>
+
+<script>
+/* --- CARGA --- */
+let progress=0;
+const loadingBar=document.getElementById('loadingBar');
+const loaderScreen=document.getElementById('loaderScreen');
+const welcomeScreen=document.getElementById('welcomeScreen');
+const gameSelection=document.getElementById('gameSelection');
+const titleText=document.getElementById('titleText');
+const loadInterval=setInterval(()=>{
+    progress+=Math.random()*10;
+    if(progress>100)progress=100;
+    loadingBar.style.width=progress+"%";
+    if(progress>=100){
+        clearInterval(loadInterval);
+        loaderScreen.style.display="none";
+        const fullText="Multiusos.IO";
+        let current=0;
+        const typeInterval=setInterval(()=>{
+            titleText.textContent=fullText.slice(0,current);
+            current++;
+            if(current>fullText.length){
+                clearInterval(typeInterval);
+                setTimeout(()=>{ welcomeScreen.style.display="none"; gameSelection.classList.add('show'); },2000);
+            }
+        },200);
+        welcomeScreen.classList.add('show');
+    }
+},200);
+
+/* --- PONG --- */
+const pongBtn=document.getElementById('pongBtn');
+const pongCanvas=document.getElementById('pongGame');
+const pongCtx=pongCanvas.getContext('2d');
+const pongControls=document.getElementById('pongControls');
+const pongScore=document.getElementById('pongScore');
+let score1=0, score2=0;
+
+let pongRunning=false;
+let p1Y=100, p2Y=100, paddleHeight=60, paddleWidth=10;
+let ballX=250, ballY=150, ballSize=10;
+let ballSpeedX=3, ballSpeedY=3;
+
+pongBtn.addEventListener('click', ()=>{
+    gameSelection.classList.remove('show');
+    pongCanvas.style.display="block";
+    pongControls.style.display="flex";
+    pongScore.style.display="flex";
+    pongRunning=true;
+    pongLoop();
+});
+
+function updateScore(){
+    document.getElementById("scoreP1").textContent="Jugador 1: "+score1;
+    document.getElementById("scoreP2").textContent="Jugador 2: "+score2;
+}
+
+function pongLoop(){
+    if(!pongRunning) return;
+    pongCtx.fillStyle="#000";
+    pongCtx.fillRect(0,0,pongCanvas.width,pongCanvas.height);
+
+    // Dibujar palas
+    pongCtx.fillStyle="#0ff";
+    pongCtx.fillRect(20,p1Y,paddleWidth,paddleHeight);
+    pongCtx.fillStyle="#f0f";
+    pongCtx.fillRect(pongCanvas.width-30,p2Y,paddleWidth,paddleHeight);
+
+    // Dibujar pelota
+    pongCtx.fillStyle="#fff";
+    pongCtx.fillRect(ballX,ballY,ballSize,ballSize);
+
+    // Mover pelota
+    ballX+=ballSpeedX;
+    ballY+=ballSpeedY;
+
+    if(ballY<=0||ballY+ballSize>=pongCanvas.height) ballSpeedY*=-1;
+
+    // Colisiones palas
+    if(ballX<=30 && ballY+ballSize>p1Y && ballY<p1Y+paddleHeight) ballSpeedX*=-1;
+    if(ballX+ballSize>=pongCanvas.width-30 && ballY+ballSize>p2Y && ballY<p2Y+paddleHeight) ballSpeedX*=-1;
+
+    // Reinicio si sale + puntuación
+    if(ballX<0){ score2++; updateScore(); ballX=250; ballY=150; ballSpeedX*=-1; }
+    if(ballX>pongCanvas.width){ score1++; updateScore(); ballX=250; ballY=150; ballSpeedX*=-1; }
+
+    requestAnimationFrame(pongLoop);
+}
+
+// Controles teclado Pong
+document.addEventListener('keydown',e=>{
+    if(e.key==="w") p1Y-=20;
+    if(e.key==="s") p1Y+=20;
+    if(e.key==="ArrowUp") p2Y-=20;
+    if(e.key==="ArrowDown") p2Y+=20;
+});
+
+// Controles móviles Pong
+document.getElementById("p1Up").addEventListener("click",()=>{ p1Y-=20; });
+document.getElementById("p1Down").addEventListener("click",()=>{ p1Y+=20; });
+document.getElementById("p2Up").addEventListener("click",()=>{ p2Y-=20; });
+document.getElementById("p2Down").addEventListener("click",()=>{ p2Y+=20; });
+</script>
+</body>
+</html>
