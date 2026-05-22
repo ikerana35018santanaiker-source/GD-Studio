@@ -1,346 +1,344 @@
-class LevelPlayer {
-    constructor() {
-        this.canvas = document.getElementById('player-canvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.player = {
-            x: 100,
-            y: 300,
-            width: 30,
-            height: 30,
-            vy: 0,
-            gravity: 0.8,
-            jumpForce: -12,
-            isJumping: false,
-            rotation: 0
-        };
-        this.objects = [];
-        this.camera = { x: 0, y: 0 };
-        this.isPlaying = false;
-        this.attempts = 0;
-        this.progress = 0;
-        this.dead = false;
+// Editor de Niveles - Se inicializa inmediatamente
+const Editor = (function() {
+    let canvas = null;
+    let ctx = null;
+    let objects = [];
+    let selectedObject = null;
+    let currentTool = 'select';
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let camera = { x: 0, y: 0 };
+    let gridSize = 30;
+    let zoom = 1;
+    let currentLevelName = 'Sin nombre';
+    let gameLoopId = null;
+    let initialized = false;
+
+    function init() {
+        if (initialized) return;
         
-        this.setupCanvas();
-        this.setupControls();
-    }
-
-    setupCanvas() {
-        this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
-    }
-
-    resizeCanvas() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    }
-
-    setupControls() {
-        // Keyboard controls
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
-                e.preventDefault();
-                this.jump();
-            }
-        });
-
-        // Mouse/Touch controls
-        this.canvas.addEventListener('click', () => this.jump());
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.jump();
-        });
-    }
-
-    jump() {
-        if (!this.isPlaying || this.dead) return;
+        canvas = document.getElementById('editor-canvas');
+        if (!canvas) {
+            console.log('Canvas del editor no encontrado, reintentando...');
+            setTimeout(init, 100);
+            return;
+        }
         
-        if (this.player.y >= this.canvas.height - this.player.height) {
-            this.player.vy = this.player.jumpForce;
-            this.player.isJumping = true;
+        ctx = canvas.getContext('2d');
+        setupCanvas();
+        setupEventListeners();
+        startGameLoop();
+        initialized = true;
+        console.log('Editor inicializado correctamente');
+    }
+
+    function setupCanvas() {
+        if (!canvas) return;
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+    }
+
+    function resizeCanvas() {
+        if (!canvas) return;
+        const container = canvas.parentElement;
+        if (container) {
+            canvas.width = container.clientWidth || 800;
+            canvas.height = container.clientHeight || 600;
         }
     }
 
-    checkCollision(obj) {
-        const playerRect = {
-            x: this.player.x,
-            y: this.player.y,
-            width: this.player.width,
-            height: this.player.height
+    function setupEventListeners() {
+        if (!canvas) return;
+
+        canvas.addEventListener('mousedown', onMouseDown);
+        canvas.addEventListener('mousemove', onMouseMove);
+        canvas.addEventListener('mouseup', onMouseUp);
+        canvas.addEventListener('wheel', onWheel, { passive: false });
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+        canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+        canvas.addEventListener('touchend', onTouchEnd);
+    }
+
+    function getMousePos(e) {
+        if (!canvas) return { x: 0, y: 0 };
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left) / zoom - camera.x,
+            y: (e.clientY - rect.top) / zoom - camera.y
+        };
+    }
+
+    function snapToGrid(pos) {
+        return {
+            x: Math.round(pos.x / gridSize) * gridSize,
+            y: Math.round(pos.y / gridSize) * gridSize
+        };
+    }
+
+    function onMouseDown(e) {
+        const pos = getMousePos(e);
+        
+        if (currentTool === 'select') {
+            selectedObject = getObjectAtPosition(pos);
+            if (selectedObject) {
+                isDragging = true;
+                dragStart = { ...pos };
+            }
+        } else if (currentTool === 'erase') {
+            const obj = getObjectAtPosition(pos);
+            if (obj) removeObject(obj);
+        } else {
+            addObject(currentTool, snapToGrid(pos));
+        }
+    }
+
+    function onMouseMove(e) {
+        const pos = getMousePos(e);
+        
+        if (isDragging && selectedObject) {
+            selectedObject.x += pos.x - dragStart.x;
+            selectedObject.y += pos.y - dragStart.y;
+            dragStart = { ...pos };
+        }
+    }
+
+    function onMouseUp(e) {
+        isDragging = false;
+    }
+
+    function onWheel(e) {
+        e.preventDefault();
+        zoom *= e.deltaY > 0 ? 0.9 : 1.1;
+        zoom = Math.max(0.1, Math.min(5, zoom));
+    }
+
+    function onTouchStart(e) {
+        e.preventDefault();
+        if (e.touches.length > 0) {
+            const touch = e.touches[0];
+            onMouseDown({ clientX: touch.clientX, clientY: touch.clientY });
+        }
+    }
+
+    function onTouchMove(e) {
+        e.preventDefault();
+        if (e.touches.length > 0) {
+            const touch = e.touches[0];
+            onMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+        }
+    }
+
+    function onTouchEnd(e) {
+        e.preventDefault();
+        onMouseUp({});
+    }
+
+    function addObject(type, pos) {
+        const types = {
+            'block': { color: '#00ff88', size: 30, shape: 'square' },
+            'spike': { color: '#ff4444', size: 30, shape: 'triangle' },
+            'orb': { color: '#ffaa00', size: 20, shape: 'circle' },
+            'portal': { color: '#4488ff', size: 30, shape: 'portal' }
         };
 
-        let objRect;
+        if (!types[type]) return;
+
+        objects.push({
+            id: Date.now() + Math.random(),
+            type: type,
+            x: pos.x,
+            y: pos.y,
+            ...types[type]
+        });
         
+        updateObjectCount();
+    }
+
+    function removeObject(obj) {
+        objects = objects.filter(o => o !== obj);
+        if (selectedObject === obj) selectedObject = null;
+        updateObjectCount();
+    }
+
+    function getObjectAtPosition(pos) {
+        for (let i = objects.length - 1; i >= 0; i--) {
+            const obj = objects[i];
+            const halfSize = obj.size / 2;
+            if (pos.x >= obj.x - halfSize && pos.x <= obj.x + halfSize &&
+                pos.y >= obj.y - halfSize && pos.y <= obj.y + halfSize) {
+                return obj;
+            }
+        }
+        return null;
+    }
+
+    function updateObjectCount() {
+        const nameElement = document.getElementById('editor-level-name');
+        if (nameElement) {
+            nameElement.textContent = `${currentLevelName} - ${objects.length} objetos`;
+        }
+    }
+
+    function drawGrid() {
+        if (!ctx || !canvas) return;
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+
+        const startX = -camera.x % gridSize;
+        const startY = -camera.y % gridSize;
+
+        for (let x = startX; x < canvas.width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+
+        for (let y = startY; y < canvas.height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+    }
+
+    function drawObject(obj) {
+        if (!ctx) return;
+        
+        ctx.fillStyle = obj.color;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+
         if (obj.shape === 'triangle') {
-            // Simplified collision for triangles
-            objRect = {
-                x: obj.x - obj.size / 2,
-                y: obj.y - obj.size / 2,
-                width: obj.size,
-                height: obj.size
-            };
+            ctx.beginPath();
+            ctx.moveTo(obj.x, obj.y - obj.size / 2);
+            ctx.lineTo(obj.x - obj.size / 2, obj.y + obj.size / 2);
+            ctx.lineTo(obj.x + obj.size / 2, obj.y + obj.size / 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        } else if (obj.shape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(obj.x, obj.y, obj.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        } else if (obj.shape === 'portal') {
+            ctx.fillRect(obj.x - obj.size / 2, obj.y - obj.size / 2, obj.size, obj.size);
+            ctx.strokeRect(obj.x - obj.size / 2, obj.y - obj.size / 2, obj.size, obj.size);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(obj.x, obj.y, obj.size / 4, 0, Math.PI * 2);
+            ctx.fill();
         } else {
-            objRect = {
-                x: obj.x - obj.size / 2,
-                y: obj.y - obj.size / 2,
-                width: obj.size,
-                height: obj.size
-            };
+            ctx.fillRect(obj.x - obj.size / 2, obj.y - obj.size / 2, obj.size, obj.size);
+            ctx.strokeRect(obj.x - obj.size / 2, obj.y - obj.size / 2, obj.size, obj.size);
         }
 
-        return (
-            playerRect.x < objRect.x + objRect.width &&
-            playerRect.x + playerRect.width > objRect.x &&
-            playerRect.y < objRect.y + objRect.height &&
-            playerRect.y + playerRect.height > objRect.y
-        );
+        if (selectedObject === obj) {
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(obj.x - obj.size / 2 - 5, obj.y - obj.size / 2 - 5, obj.size + 10, obj.size + 10);
+        }
     }
 
-    update() {
-        if (!this.isPlaying || this.dead) return;
-
-        // Apply gravity
-        this.player.vy += this.player.gravity;
-        this.player.y += this.player.vy;
-
-        // Ground collision
-        if (this.player.y >= this.canvas.height - this.player.height) {
-            this.player.y = this.canvas.height - this.player.height;
-            this.player.vy = 0;
-            this.player.isJumping = false;
-        }
-
-        // Ceiling collision
-        if (this.player.y <= 0) {
-            this.player.y = 0;
-            this.player.vy = 0;
-        }
-
-        // Camera follow
-        this.camera.x = this.player.x - 100;
-
-        // Update rotation
-        if (this.player.isJumping) {
-            this.player.rotation += 0.1;
-        } else {
-            this.player.rotation = 0;
-        }
-
-        // Check collisions with objects
-        for (const obj of this.objects) {
-            if (this.checkCollision(obj)) {
-                if (obj.type === 'spike' || (obj.type === 'block' && this.player.vy > 0)) {
-                    this.die();
-                    return;
-                }
-                
-                if (obj.type === 'orb') {
-                    this.player.vy = this.player.jumpForce * 1.5;
-                }
-                
-                if (obj.type === 'portal') {
-                    // Teleport effect
-                    this.player.y = this.canvas.height - 100;
-                }
-
-                // Platform collision (only from top)
-                if (obj.type === 'block' && 
-                    this.player.vy > 0 && 
-                    this.player.y - this.player.vy <= obj.y - obj.size / 2) {
-                    this.player.y = obj.y - obj.size / 2 - this.player.height;
-                    this.player.vy = 0;
-                    this.player.isJumping = false;
-                }
-            }
-        }
-
-        // Update progress
-        const maxX = Math.max(...this.objects.map(obj => obj.x), 1000);
-        this.progress = Math.min((this.player.x / maxX) * 100, 100);
+    function render() {
+        if (!ctx || !canvas) return;
         
-        this.updateStats();
+        ctx.fillStyle = '#0a0a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.scale(zoom, zoom);
+        drawGrid();
+        objects.forEach(drawObject);
+        ctx.restore();
     }
 
-    die() {
-        this.dead = true;
-        this.attempts++;
-        setTimeout(() => this.respawn(), 1000);
+    function gameLoop() {
+        render();
+        gameLoopId = requestAnimationFrame(gameLoop);
     }
 
-    respawn() {
-        this.player.x = 100;
-        this.player.y = 300;
-        this.player.vy = 0;
-        this.player.rotation = 0;
-        this.player.isJumping = false;
-        this.dead = false;
-        this.camera.x = 0;
-        this.progress = 0;
+    function startGameLoop() {
+        if (gameLoopId) cancelAnimationFrame(gameLoopId);
+        gameLoop();
     }
 
-    updateStats() {
-        document.getElementById('player-attempts').textContent = 
-            `Intentos: ${this.attempts}`;
-        document.getElementById('player-progress').textContent = 
-            `Progreso: ${Math.floor(this.progress)}%`;
+    function loadLevel(newObjects, name) {
+        console.log('Editor: Cargando nivel:', name, 'Objetos:', newObjects?.length || 0);
+        objects = Array.isArray(newObjects) ? [...newObjects] : [];
+        currentLevelName = name || 'Sin nombre';
+        selectedObject = null;
+        camera = { x: 0, y: 0 };
+        zoom = 1;
+        updateObjectCount();
+        
+        if (objects.length > 0) {
+            fitCameraToObjects();
+        }
+        
+        resizeCanvas();
+        console.log('Editor: Nivel cargado con', objects.length, 'objetos');
     }
 
-    render() {
-        // Clear canvas
-        this.ctx.fillStyle = '#0a0a1a';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.ctx.save();
-        this.ctx.translate(-this.camera.x, -this.camera.y);
-
-        // Draw ground
-        this.ctx.fillStyle = '#1a1a2e';
-        this.ctx.fillRect(this.camera.x, this.canvas.height - 20, 
-                         this.canvas.width + 200, 20);
-
-        // Draw objects
-        this.objects.forEach(obj => {
-            this.ctx.fillStyle = obj.color;
-            
-            if (obj.shape === 'triangle') {
-                this.ctx.beginPath();
-                this.ctx.moveTo(obj.x, obj.y - obj.size / 2);
-                this.ctx.lineTo(obj.x - obj.size / 2, obj.y + obj.size / 2);
-                this.ctx.lineTo(obj.x + obj.size / 2, obj.y + obj.size / 2);
-                this.ctx.closePath();
-                this.ctx.fill();
-            } else if (obj.shape === 'circle') {
-                this.ctx.beginPath();
-                this.ctx.arc(obj.x, obj.y, obj.size / 2, 0, Math.PI * 2);
-                this.ctx.fill();
-            } else if (obj.shape === 'portal') {
-                this.ctx.fillRect(obj.x - obj.size / 2, obj.y - obj.size / 2, 
-                                 obj.size, obj.size);
-            } else {
-                this.ctx.fillRect(obj.x - obj.size / 2, obj.y - obj.size / 2, 
-                                 obj.size, obj.size);
-            }
+    function fitCameraToObjects() {
+        if (objects.length === 0 || !canvas) return;
+        
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        
+        objects.forEach(obj => {
+            minX = Math.min(minX, obj.x - obj.size);
+            maxX = Math.max(maxX, obj.x + obj.size);
+            minY = Math.min(minY, obj.y - obj.size);
+            maxY = Math.max(maxY, obj.y + obj.size);
         });
-
-        // Draw player
-        this.ctx.save();
-        this.ctx.translate(this.player.x + this.player.width / 2, 
-                          this.player.y + this.player.height / 2);
-        this.ctx.rotate(this.player.rotation);
         
-        this.ctx.fillStyle = '#00ff88';
-        this.ctx.fillRect(-this.player.width / 2, -this.player.height / 2, 
-                         this.player.width, this.player.height);
-        
-        // Draw eyes
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.fillRect(-5, -10, 10, 10);
-        this.ctx.fillStyle = '#000000';
-        this.ctx.fillRect(-2, -7, 4, 4);
-        
-        this.ctx.restore();
-
-        this.ctx.restore();
-
-        // Draw death effect
-        if (this.dead) {
-            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        }
+        camera.x = -(minX + maxX) / 2 + canvas.width / 2;
+        camera.y = -(minY + maxY) / 2 + canvas.height / 2;
     }
 
-    startLevel(objects) {
-        this.objects = objects || [];
-        this.player = {
-            x: 100,
-            y: 300,
-            width: 30,
-            height: 30,
-            vy: 0,
-            gravity: 0.8,
-            jumpForce: -12,
-            isJumping: false,
-            rotation: 0
+    function setTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tool === tool);
+        });
+    }
+
+    function getLevelData() {
+        return {
+            objects: objects,
+            settings: { gridSize, camera, zoom }
         };
-        this.attempts = 0;
-        this.progress = 0;
-        this.dead = false;
-        this.isPlaying = true;
-        
-        document.getElementById('player-screen').classList.remove('hidden');
-        this.updateStats();
-        
-        this.gameLoop();
     }
 
-    stopLevel() {
-        this.isPlaying = false;
-        document.getElementById('player-screen').classList.add('hidden');
+    function calculateDuration() {
+        if (objects.length === 0) return 0;
+        const maxX = Math.max(...objects.map(obj => obj.x));
+        return Math.max(1, Math.ceil(maxX / 300));
     }
 
-    gameLoop() {
-        if (!this.isPlaying) return;
-
-        this.update();
-        this.render();
-        requestAnimationFrame(() => this.gameLoop());
+    // Iniciar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
 
-    // Añadir al final del archivo editor.js existente:
+    // API pública
+    return {
+        loadLevel,
+        setTool,
+        getLevelData,
+        calculateDuration,
+        get currentLevelName() { return currentLevelName; },
+        set currentLevelName(name) { currentLevelName = name; updateObjectCount(); },
+        resizeCanvas,
+        updateObjectCount
+    };
+})();
 
-// Método para actualizar el contador de objetos
-updateObjectCount() {
-    const count = this.objects.length;
-    const nameElement = document.getElementById('editor-level-name');
-    if (nameElement) {
-        nameElement.textContent = `${this.currentLevelName || 'Nivel'} - ${count} objetos`;
-    }
-}
-
-// Método para cargar nivel mejorado
-loadLevel(objects, name) {
-    console.log('Cargando nivel:', name, 'con', objects?.length || 0, 'objetos');
-    
-    this.objects = Array.isArray(objects) ? [...objects] : [];
-    this.currentLevelName = name || 'Sin nombre';
-    this.selectedObject = null;
-    this.camera = { x: 0, y: 0 };
-    this.zoom = 1;
-    
-    // Actualizar UI
-    this.updateObjectCount();
-    
-    // Ajustar cámara para ver los objetos
-    if (this.objects.length > 0) {
-        this.fitCameraToObjects();
-    }
-    
-    // Forzar redibujado
-    this.resizeCanvas();
-    this.render();
-    
-    console.log('Nivel cargado:', this.objects.length, 'objetos');
-}
-
-// Ajustar cámara para mostrar todos los objetos
-fitCameraToObjects() {
-    if (this.objects.length === 0) return;
-    
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    
-    this.objects.forEach(obj => {
-        minX = Math.min(minX, obj.x - obj.size);
-        maxX = Math.max(maxX, obj.x + obj.size);
-        minY = Math.min(minY, obj.y - obj.size);
-        maxY = Math.max(maxY, obj.y + obj.size);
-    });
-    
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    
-    this.camera.x = -centerX + this.canvas.width / 2;
-    this.camera.y = -centerY + this.canvas.height / 2;
-}
-}
-
-const player = new LevelPlayer();
+// Exponer globalmente
+window.editor = Editor;
+console.log('Editor module loaded');
