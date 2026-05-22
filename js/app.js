@@ -8,7 +8,7 @@ import { DatabaseService } from "./db/database-service.js";
 import { Dashboard } from "./dashboard/dashboard.js";
 import { LevelEditor } from "./editor/editor.js";
 import { ModalsController } from "./ui/modals.js";
-import { hideLoader } from "./utils/helpers.js";
+import { hideLoader, showView } from "./utils/helpers.js";
 import { showToast } from "./utils/toast.js";
 import { preloadGdSprites } from "./render/object-renderer.js";
 
