@@ -1,0 +1,212 @@
+.view-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: var(--header-h);
+  padding: 0 0.75rem;
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.editor-title-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.editor-title-input:hover,
+.editor-title-input:focus {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  outline: none;
+}
+
+.editor-header-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--color-bg-elevated);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-section {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar-section h3 {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.object-palette {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.palette-item {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.35rem;
+  background: var(--color-surface);
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  transition: border-color var(--transition), background var(--transition);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  touch-action: none;
+}
+
+.palette-item:hover,
+.palette-item.active {
+  border-color: var(--color-primary);
+  background: rgba(0, 212, 255, 0.08);
+  color: var(--color-primary);
+}
+
+.palette-item i,
+.palette-swatch {
+  font-size: 1.1rem;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.palette-swatch.block { background: #4ade80; }
+.palette-swatch.spike { background: #ef4444; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+.palette-swatch.orb { background: #fbbf24; border-radius: 50%; }
+.palette-swatch.pad { background: #60a5fa; }
+.palette-swatch.portal { background: #a78bfa; }
+.palette-swatch.deco { background: #94a3b8; }
+
+.object-properties .props-empty {
+  font-size: 0.9rem;
+  color: var(--color-text-dim);
+}
+
+.props-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.props-grid .field {
+  margin-bottom: 0;
+}
+
+.props-grid .field label {
+  font-size: 0.8rem;
+}
+
+.sidebar-tools {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.editor-canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--editor-bg);
+  touch-action: none;
+}
+
+#editor-canvas,
+#test-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.editor-zoom {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: rgba(10, 14, 23, 0.9);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* Test view */
+.view-test {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: #000;
+}
+
+.test-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-h);
+  padding: 0 1rem;
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border);
+}
+
+#test-progress {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-primary);
+}
+
+#test-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+.test-hint {
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  background: var(--color-bg);
+}
