@@ -1,0 +1,41 @@
+:root {
+  --color-bg: #060a12;
+  --color-bg-elevated: #0d1320;
+  --color-bg-card: #121a2b;
+  --color-surface: #182236;
+  --color-surface-hover: #1f2d47;
+  --color-border: #2a3a55;
+  --color-border-focus: #00e5ff;
+
+  --color-primary: #00e5ff;
+  --color-primary-dim: #00a8c4;
+  --color-accent: #8b5cf6;
+  --color-accent-glow: rgba(139, 92, 246, 0.45);
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f43f5e;
+
+  --color-text: #f0f4fc;
+  --color-text-muted: #94a3b8;
+  --color-text-dim: #64748b;
+
+  --font-display: "Orbitron", sans-serif;
+  --font-body: "Rajdhani", system-ui, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 28px;
+
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 12px 40px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 0 28px rgba(0, 229, 255, 0.22);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --header-h: 58px;
+  --sidebar-w: 280px;
+  --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --grid-cell: 30px;
+  --editor-bg: #080d18;
+}
