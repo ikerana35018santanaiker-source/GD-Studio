@@ -54,3 +54,4 @@ export class EditorPhysics {
   reset() {
     this.objects = [];
   }
+}
