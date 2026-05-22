@@ -527,3 +527,110 @@ body {
         bottom: 0;
     }
 }
+
+/* Añadir al final del archivo styles.css */
+
+/* Animaciones para notificaciones */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Estilo para estado vacío */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--primary);
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: var(--text);
+}
+
+/* Mejoras en las tarjetas de proyecto */
+.project-card {
+    transition: all 0.3s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 255, 136, 0.2);
+}
+
+/* Indicador de dificultad */
+.difficulty-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    background: var(--primary);
+    color: var(--background);
+}
+
+/* Mejoras en el editor */
+.editor-container {
+    position: relative;
+    background: #0a0a1a;
+}
+
+#editor-canvas {
+    cursor: crosshair;
+}
+
+#editor-canvas:active {
+    cursor: grabbing;
+}
+
+/* Estilo para el modal de exportación */
+.export-options .option-card {
+    transition: all 0.3s ease;
+}
+
+.export-options .option-card:hover {
+    border-color: var(--primary);
+    transform: scale(1.05);
+    background: #1e2a4a;
+}
+
+/* Asegurar que los modales se muestren correctamente */
+.modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.hidden {
+    display: none !important;
+}
+
+/* Estilo para botones del editor */
+.tool-btn.active {
+    background: var(--primary) !important;
+    color: var(--background) !important;
+    border-color: var(--primary) !important;
+}
