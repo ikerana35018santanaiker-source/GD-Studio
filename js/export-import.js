@@ -52,57 +52,63 @@ class ExportImportManager {
     }
 
     async importGMD(file) {
-        try {
-            const text = await file.text();
-            const levelData = this.parseGMD(text);
-            
-            // Guardar el nivel importado
-            const userId = auth.currentUser.uid;
-            const project = await databaseManager.saveProject(userId, {
+    try {
+        const text = await file.text();
+        const levelData = this.parseGMD(text);
+        
+        // Usar la app principal para importar
+        if (app && typeof app.importLevel === 'function') {
+            await app.importLevel({
                 name: levelData.name || file.name.replace('.gmd', ''),
                 difficulty: levelData.difficulty || 'normal',
                 objects: levelData.objects || [],
                 settings: levelData.settings || {}
             });
-
-            // Cargar en el editor
-            editor.loadLevel(project.objects, project.name);
-            this.showEditor();
-            
-            uiManager.showNotification('Nivel importado correctamente', 'success');
-        } catch (error) {
-            console.error('Error importing GMD:', error);
-            uiManager.showNotification('Error al importar el archivo .gmd', 'error');
+        } else {
+            uiManager.showNotification('Error: Aplicación no inicializada', 'error');
         }
+        
+        // Cerrar modal de importación
+        document.getElementById('import-level-modal').classList.add('hidden');
+        
+    } catch (error) {
+        console.error('Error importing GMD:', error);
+        uiManager.showNotification('Error al importar el archivo .gmd', 'error');
     }
+}
 
     async importJSON(file) {
-        try {
-            const text = await file.text();
-            const levelData = JSON.parse(text);
-            
-            // Validar estructura
-            if (!levelData.objects || !Array.isArray(levelData.objects)) {
-                throw new Error('Formato JSON inválido');
-            }
-
-            const userId = auth.currentUser.uid;
-            const project = await databaseManager.saveProject(userId, {
+    try {
+        const text = await file.text();
+        const levelData = JSON.parse(text);
+        
+        // Validar estructura mínima
+        if (!levelData.objects || !Array.isArray(levelData.objects)) {
+            throw new Error('Formato JSON inválido: se requiere un array de objetos');
+        }
+        
+        // Usar la app principal para importar
+        if (app && typeof app.importLevel === 'function') {
+            await app.importLevel({
                 name: levelData.name || file.name.replace('.json', ''),
                 difficulty: levelData.difficulty || 'normal',
                 objects: levelData.objects,
-                settings: levelData.settings || {}
+                settings: levelData.settings || {},
+                audioBase64: levelData.audioBase64 || null,
+                newgroundsId: levelData.newgroundsId || null
             });
-
-            editor.loadLevel(project.objects, project.name);
-            this.showEditor();
-            
-            uiManager.showNotification('Nivel importado correctamente', 'success');
-        } catch (error) {
-            console.error('Error importing JSON:', error);
-            uiManager.showNotification('Error al importar el archivo JSON', 'error');
+        } else {
+            uiManager.showNotification('Error: Aplicación no inicializada', 'error');
         }
+        
+        // Cerrar modal de importación
+        document.getElementById('import-level-modal').classList.add('hidden');
+        
+    } catch (error) {
+        console.error('Error importing JSON:', error);
+        uiManager.showNotification('Error al importar el archivo JSON: ' + error.message, 'error');
     }
+}
 
     parseGMD(data) {
         // Parser básico para archivos .gmd
