@@ -284,6 +284,63 @@ class LevelPlayer {
         this.render();
         requestAnimationFrame(() => this.gameLoop());
     }
+
+    // Añadir al final del archivo editor.js existente:
+
+// Método para actualizar el contador de objetos
+updateObjectCount() {
+    const count = this.objects.length;
+    const nameElement = document.getElementById('editor-level-name');
+    if (nameElement) {
+        nameElement.textContent = `${this.currentLevelName || 'Nivel'} - ${count} objetos`;
+    }
+}
+
+// Método para cargar nivel mejorado
+loadLevel(objects, name) {
+    console.log('Cargando nivel:', name, 'con', objects?.length || 0, 'objetos');
+    
+    this.objects = Array.isArray(objects) ? [...objects] : [];
+    this.currentLevelName = name || 'Sin nombre';
+    this.selectedObject = null;
+    this.camera = { x: 0, y: 0 };
+    this.zoom = 1;
+    
+    // Actualizar UI
+    this.updateObjectCount();
+    
+    // Ajustar cámara para ver los objetos
+    if (this.objects.length > 0) {
+        this.fitCameraToObjects();
+    }
+    
+    // Forzar redibujado
+    this.resizeCanvas();
+    this.render();
+    
+    console.log('Nivel cargado:', this.objects.length, 'objetos');
+}
+
+// Ajustar cámara para mostrar todos los objetos
+fitCameraToObjects() {
+    if (this.objects.length === 0) return;
+    
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    
+    this.objects.forEach(obj => {
+        minX = Math.min(minX, obj.x - obj.size);
+        maxX = Math.max(maxX, obj.x + obj.size);
+        minY = Math.min(minY, obj.y - obj.size);
+        maxY = Math.max(maxY, obj.y + obj.size);
+    });
+    
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    
+    this.camera.x = -centerX + this.canvas.width / 2;
+    this.camera.y = -centerY + this.canvas.height / 2;
+}
 }
 
 const player = new LevelPlayer();
